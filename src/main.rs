@@ -29,14 +29,13 @@ fn event_loop(rx: mpsc::Receiver<String>) {
     let name = worker.name().unwrap(); // name is guaranteed
 
     for received in rx {
-        let ref body = json!({ "tid": tid, "name": name, "recv": received });
         if TRACE_OPTIONS.all || TRACE_OPTIONS.el {
             let ref code_attr = emitter::CodeAttributes { module: file!(), function: _f, line_no: line!(), format: "recv" };
-            let (key, entry) = emitter::unhide().trace(code_attr, body).unwrap();
+            let ref body = json!({ "tid": tid, "name": name, "recv": received });
+            let (key, entry) = emitter::trace(code_attr, body).unwrap();
             // let _ = dal::add_trace(entry);
             println!("{} {}", key, entry);
         }
-        println!("{}", body);
         if received == "exit" { return; }
     }
 }
@@ -45,10 +44,9 @@ fn worker(i : usize, rx: mpsc::Receiver<String>) -> thread::JoinHandle<String> {
     let _f = "worker";
     let thread_name = format!("event_loop #{}", i);
     // let mut o = self.clone();
-    // let child_emitter = emitter::unhide().fork_trace();
+    let child_emitter = emitter::pregnant();
     let h = thread::Builder::new().name(thread_name.into()).spawn(move || {
-        // let ref mut working_emitter = child_emitter.clone();
-        // emitter::stash(working_emitter);
+        child_emitter.clone().stash(); // emitter::stash(child_emitter);
         event_loop(rx);
         let worker = thread::current();
         format!("{:?} {}", worker.id(), worker.name().unwrap())
@@ -57,9 +55,14 @@ fn worker(i : usize, rx: mpsc::Receiver<String>) -> thread::JoinHandle<String> {
 }
 
 fn main() {
+    let _f = "main";
+
+    emitter::grandfather();
+
     let bodies = [ "msg1", "msg2", "msg3", "msg4", "msg5", "exit" ];
     let mut channels: Vec<mpsc::Sender<String>> = Vec::new();
     let mut handles: Vec<thread::JoinHandle<String>> = Vec::new();
+
     for i in 1..10 {
         let (tx, rx) = mpsc::channel();
         channels.push(tx);
@@ -79,6 +82,13 @@ fn main() {
     }
 
     for rc in hist.iter() {
-        println!("completed {:?}", rc);
+        let outcome = format!("{:?}", rc);
+        if TRACE_OPTIONS.all || TRACE_OPTIONS.el {
+            let ref code_attr = emitter::CodeAttributes { module: file!(), function: _f, line_no: line!(), format: "recv" };
+            let ref body = json!({ "outcome": outcome });
+            let (key, entry) = emitter::trace(code_attr, body).unwrap();
+            // let _ = dal::add_trace(entry);
+            println!("{} {}", key, entry);
+        }
     }
 }
