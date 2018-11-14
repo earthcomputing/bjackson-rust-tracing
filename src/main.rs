@@ -32,9 +32,9 @@ fn event_loop(rx: mpsc::Receiver<String>) {
         if TRACE_OPTIONS.all || TRACE_OPTIONS.el {
             let ref code_attr = emitter::CodeAttributes { module: file!(), function: _f, line_no: line!(), format: "recv" };
             let ref body = json!({ "tid": tid, "name": name, "recv": received });
-            let (key, entry) = emitter::trace(code_attr, body).unwrap();
+            let (_key, entry) = emitter::trace(code_attr, body).unwrap();
             // let _ = dal::add_trace(entry);
-            println!("{} {}", key, entry);
+            println!("{}", entry);
         }
         if received == "exit" { return; }
     }
@@ -86,9 +86,9 @@ fn main() {
         if TRACE_OPTIONS.all || TRACE_OPTIONS.el {
             let ref code_attr = emitter::CodeAttributes { module: file!(), function: _f, line_no: line!(), format: "recv" };
             let ref body = json!({ "outcome": outcome });
-            let (key, entry) = emitter::trace(code_attr, body).unwrap();
+            let (_key, entry) = emitter::trace(code_attr, body).unwrap();
             // let _ = dal::add_trace(entry);
-            println!("{} {}", key, entry);
+            println!("{}", entry);
         }
     }
 }
