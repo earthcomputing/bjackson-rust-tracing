@@ -9,7 +9,7 @@ extern crate serde;
 #[macro_use] extern crate serde_json;
 extern crate time;
 
-// mod emitter;
+mod emitter;
 
 fn event_loop(rx: mpsc::Receiver<String>) {
     let worker = thread::current();
