@@ -34,11 +34,18 @@ lazy_static! {
     };
 }
 
-pub fn unhide<'a>() -> Entry<'a, u64, EventGenerator> {
+pub fn xunhide<'a>() -> Entry<'a, u64, EventGenerator> {
     let tid = thread::current().id();
     let thread_id = parse(tid);
     let e = EMITTERS.entry(thread_id);
     e
+}
+
+pub fn unhide<'a>() -> &'a mut EventGenerator {
+    let tid = thread::current().id();
+    let thread_id = parse(tid);
+    let v = EMITTERS.get_mut(&thread_id).unwrap();
+    v
 }
 
 // scores.entry(String::from("Blue")).or_insert(50);
@@ -64,33 +71,6 @@ impl fmt::Display for TraceType {
 }
 
 // --
-
-/*
-    coding idiom (somewhere within listen_xx_loop):
-
-    let _f = "initialize"; 
-    if TRACE_OPTIONS.all || TRACE_OPTIONS.pe {
-        let ref code_attr = CodeAttributes { module: file!(), function: _f, line_no: line!(), format: "tag" };
-        let ref body = json!({ "id": self.get_id(), ...  });
-        let entry = emitter::unhide().trace(code: code_attr, body: body);
-        let _ = dal::add_trace(entry);
-    }
-
-    // SPAWN THREAD (listen_xx_loop)
-    fn listen_xx(&self, ...) -> Result<(), Err> {
-        let _f = "listen_xx";
-        let mut xx = self.clone();
-        let child_emitter = emitter::unhide().fork_trace();
-        let thread_name = format!("xx {} listen_xx_loop", self.get_id());
-        thread::Builder::new().name(thread_name.into()).spawn( move || {
-            let ref mut working_emitter = child_emitter.clone();
-            emitter::stash(working_emitter);
-            let _ = xx.listen_xx_loop(...).map_err(|e| write_err("xx", e));
-            if CONTINUE_ON_ERROR { let _ = xx.listen_xx(...); }
-        })?;
-        Ok(())
-    }
-*/
 
 #[derive(Debug, Clone, Serialize)]
 pub struct CodeAttributes {
