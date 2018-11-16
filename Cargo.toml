@@ -6,7 +6,9 @@ authors = ["Bill Jackson <bjackson@earthcomputing.io>"]
 [dependencies]
 backtrace = "0.3"
 failure = "0.1.1"
+futures = "0.1.23"
 lazy_static = "1.2.0"
+rdkafka = "0.17.0"
 serde = "1.0.27"
 serde_derive = "1.0.27"
 serde_json = "1.0.9"

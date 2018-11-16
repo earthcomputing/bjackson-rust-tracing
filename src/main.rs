@@ -3,13 +3,16 @@ use std::thread;
 use std::sync::mpsc;
 
 extern crate failure;
+extern crate futures;
 extern crate lazy_static;
+extern crate rdkafka;
 extern crate serde;
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate serde_json;
 extern crate time;
 
 mod emitter;
+mod streaming;
 
 // primitive override flag(s):
 pub struct TraceOptions {
@@ -32,9 +35,9 @@ fn event_loop(rx: mpsc::Receiver<String>) {
         if TRACE_OPTIONS.all || TRACE_OPTIONS.el {
             let ref code_attr = emitter::CodeAttributes { module: file!(), function: _f, line_no: line!(), format: "recv" };
             let ref body = json!({ "tid": tid, "name": name, "recv": received });
-            let (_key, entry) = emitter::trace(code_attr, body).unwrap();
-            // let _ = dal::add_trace(entry);
-            println!("{}", entry);
+            let (key, entry) = emitter::trace(code_attr, body).unwrap();
+            streaming::log(key, entry);
+            // println!("{}", entry);
         }
         if received == "exit" { return; }
     }
@@ -86,9 +89,9 @@ fn main() {
         if TRACE_OPTIONS.all || TRACE_OPTIONS.el {
             let ref code_attr = emitter::CodeAttributes { module: file!(), function: _f, line_no: line!(), format: "recv" };
             let ref body = json!({ "outcome": outcome });
-            let (_key, entry) = emitter::trace(code_attr, body).unwrap();
-            // let _ = dal::add_trace(entry);
-            println!("{}", entry);
+            let (key, entry) = emitter::trace(code_attr, body).unwrap();
+            streaming::log(key, entry);
+            // println!("{}", entry);
         }
     }
 }
