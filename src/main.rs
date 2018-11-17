@@ -1,6 +1,7 @@
 
 use std::thread;
 use std::sync::mpsc;
+use std::time::Duration;
 
 extern crate failure;
 extern crate futures;
@@ -94,4 +95,7 @@ fn main() {
             // println!("{}", entry);
         }
     }
+
+    streaming::flush();
+    // thread::sleep(Duration::from_millis(2*1000));
 }
