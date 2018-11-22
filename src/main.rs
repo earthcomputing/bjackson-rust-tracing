@@ -15,6 +15,8 @@ extern crate time;
 mod emitter;
 mod streaming;
 
+use streaming::{LogStream};
+
 // primitive override flag(s):
 pub struct TraceOptions {
     pub all: bool,
@@ -62,6 +64,7 @@ fn main() {
     let _f = "main";
 
     emitter::grandfather();
+    let log_stream = LogStream::new();
 
     let bodies = [ "msg1", "msg2", "msg3", "msg4", "msg5", "exit" ];
     let mut channels: Vec<mpsc::Sender<String>> = Vec::new();
@@ -96,6 +99,6 @@ fn main() {
         }
     }
 
-    streaming::flush();
+    log_stream.close();
     // thread::sleep(Duration::from_millis(2*1000));
 }

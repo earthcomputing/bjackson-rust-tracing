@@ -1,8 +1,12 @@
 
-use std::sync::{Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc,Mutex};
+use std::thread;
+use std::time::Duration;
 
 use futures::Future;
 use lazy_static::lazy_static;
+use rdkafka::Message;
 use rdkafka::config::ClientConfig;
 use rdkafka::error::KafkaError;
 use rdkafka::message::OwnedMessage;
@@ -40,18 +44,67 @@ pub fn log(key: String, doclet: String) {
     monitor_future(xmit);
 }
 
+pub struct LogStream {
+    running: Arc<AtomicBool>,
+    flusher: thread::JoinHandle<String>
+}
+
+impl LogStream {
+    pub fn new() -> LogStream {
+        let running = Arc::new(AtomicBool::new(true));
+        let h = start_sync(running.clone());
+        LogStream { flusher: h, running: running }
+    }
+
+    pub fn close(self) {
+        self.running.store(false, Ordering::SeqCst);
+        let _result = self.flusher.join();
+/*
+        match result {
+            Ok(tid) => println!("{}", tid),
+            Err(e) => println!("Error: {:?}", e)
+        }
+*/
+        flush(); // safety check
+    }
+}
+
 // FIXME: lots of things to be handled here
-pub fn flush() {
+fn flush() {
     while let Some(xmit) = FUTURES.lock().unwrap().pop() {
         let f = xmit.then(|result| -> Result<(), KafkaError> {
             match result {
                 Ok(Ok(delivery)) => { println!("Sent: {:?}", delivery); Ok(())},
-                Ok(Err((e, msg))) => { println!("Error: {:?}", e); Ok(())}, // Err(e, OwnedMessage(msg))
+                Ok(Err((e, msg))) => { println!("Error: {:?} {:?}", e, body(msg)); Ok(())}, // Err(e, OwnedMessage(msg))
                 Err(e) => { println!("Cancelled: {:?}", e); Ok(())}         // Err(e: futures::Canceled)
             }
         });
         let _ = f.wait(); // Result - always Ok(())
     }
+}
+
+fn body(msg: OwnedMessage) -> String {
+    match msg.payload_view::<str>() {
+        Some(Ok(payload)) => payload.to_owned(),
+        _ => "".to_owned()
+    }
+}
+
+fn sync_loop(running: Arc<AtomicBool>) {
+    while running.load(Ordering::SeqCst) {
+        flush();
+        thread::sleep(Duration::from_millis(1000));
+    }
+}
+
+fn start_sync(running: Arc<AtomicBool>) -> thread::JoinHandle<String> {
+    let thread_name = format!("stream flusher");
+    let h = thread::Builder::new().name(thread_name.into()).spawn(move || {
+        sync_loop(running);
+        let worker = thread::current();
+        format!("{:?} {}", worker.id(), worker.name().unwrap())
+    }).unwrap();
+    h
 }
 
 /*
